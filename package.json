@@ -1,7 +1,7 @@
 {
-  "name": "toolcallviewer",
+  "name": "openclaw-tool-call-viewer",
   "version": "1.0.0",
-  "description": "TARS Tool Call Viewer - OpenClaw session tool call history",
+  "description": "OpenClaw Tool Call Viewer - Session tool call history viewer",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

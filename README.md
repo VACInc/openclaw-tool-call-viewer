@@ -1,4 +1,4 @@
-# Tool Call Viewer
+# OpenClaw Tool Call Viewer
 
 A lightweight web UI for browsing [OpenClaw](https://github.com/openclaw/openclaw) session tool call history. Zero dependencies — just Node.js.
 
@@ -52,8 +52,8 @@ Download installer from [nodejs.org](https://nodejs.org/)
 ## Installation
 
 ```bash
-git clone https://github.com/VACInc/toolcallviewer.git
-cd toolcallviewer
+git clone https://github.com/VACInc/openclaw-tool-call-viewer.git
+cd openclaw-tool-call-viewer
 node server.js
 ```
 
