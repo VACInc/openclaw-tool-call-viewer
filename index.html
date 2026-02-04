@@ -161,6 +161,24 @@
     .timestamp {
       color: #8b949e;
       font-size: 12px;
+      position: relative;
+    }
+    .timestamp .full-time {
+      display: none;
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      background: #30363d;
+      color: #e6edf3;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      white-space: nowrap;
+      z-index: 50;
+      pointer-events: none;
+    }
+    .timestamp:hover .full-time {
+      display: block;
     }
     .session-id {
       font-family: monospace;
@@ -694,7 +712,7 @@
           <tr ondblclick="copyRow(${rowIndex})" title="Double-click to copy row">
             <td><span class="tool-name">${call.name}</span></td>
             <td><div class="arguments" ondblclick="copyText(filteredCalls[${rowIndex}].arguments ? JSON.stringify(filteredCalls[${rowIndex}].arguments, null, 2) : '-'); event.stopPropagation();">${escapeHtml(args)}</div></td>
-            <td class="timestamp" title="${fullTime}">${timeStr}</td>
+            <td class="timestamp">${timeStr}<span class="full-time">${fullTime}</span></td>
             <td class="model">${call.model || '-'}</td>
             <td class="session-id">${call.sessionId || '-'}</td>
             <td><button class="copy-btn" onclick="copyRow(${rowIndex}); event.stopPropagation();">📋</button></td>
