@@ -7,8 +7,8 @@ const path = require('path');
 const args = process.argv.slice(2);
 let PORT = 3847;
 let SESSIONS_DIR = path.join(process.env.HOME, '.openclaw/agents/main/sessions');
-
 let DEMO_MODE = false;
+let AGENT_NAME = process.env.OPENCLAW_AGENT_NAME || 'OpenClaw';
 
 for (let i = 0; i < args.length; i++) {
   if ((args[i] === '--port' || args[i] === '-p') && args[i + 1]) {
@@ -19,6 +19,9 @@ for (let i = 0; i < args.length; i++) {
     i++;
   } else if (args[i] === '--demo') {
     DEMO_MODE = true;
+  } else if ((args[i] === '--name' || args[i] === '-n') && args[i + 1]) {
+    AGENT_NAME = args[i + 1];
+    i++;
   } else if (args[i] === '--help' || args[i] === '-h') {
     console.log(`
 Tool Call Viewer - OpenClaw session tool call history
@@ -29,6 +32,8 @@ Options:
   -p, --port <port>       Port to listen on (default: 3847)
   -s, --sessions <path>   Path to sessions directory 
                           (default: ~/.openclaw/agents/main/sessions)
+  -n, --name <name>       Agent name for title (default: OpenClaw, or env OPENCLAW_AGENT_NAME)
+      --demo              Run with fake demo data (for screenshots)
   -h, --help              Show this help message
 
 Examples:
@@ -123,7 +128,9 @@ function parseToolCalls() {
 
 function serveStatic(res, filePath, contentType) {
   try {
-    const content = fs.readFileSync(filePath, 'utf8');
+    let content = fs.readFileSync(filePath, 'utf8');
+    // Template the agent name
+    content = content.replace(/\{\{AGENT_NAME\}\}/g, AGENT_NAME);
     res.writeHead(200, { 'Content-Type': contentType });
     res.end(content);
   } catch (e) {
