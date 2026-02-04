@@ -327,6 +327,39 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
     }
+    
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+      body { padding: 10px; }
+      .header { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .header h1 { font-size: 1.3em; }
+      .stats { flex-direction: column; gap: 10px; }
+      .stat-card { min-width: auto; width: 100%; }
+      .search-card { flex-direction: row; }
+      .search-card input { flex: 1; width: auto; }
+      .controls { flex-direction: column; align-items: stretch; gap: 10px; }
+      .controls > div { width: 100%; }
+      .controls select, .controls input[type="date"] { width: 100%; }
+      .type-dropdown { width: 100%; }
+      .type-dropdown-btn { width: 100%; }
+      .sort-group { flex-wrap: wrap; }
+      .sort-group select { flex: 1; }
+      table { font-size: 12px; }
+      th, td { padding: 8px 6px; }
+      .arguments { max-width: 200px; max-height: 60px; font-size: 10px; }
+      .tool-name { font-size: 11px; padding: 2px 5px; }
+      .session-id { font-size: 9px; }
+      .pagination { flex-wrap: wrap; }
+      .page-info { width: 100%; text-align: center; order: -1; margin-bottom: 10px; }
+      .auto-refresh { margin-left: 0; margin-top: 10px; }
+    }
+    
+    @media (max-width: 480px) {
+      .header h1 { font-size: 1.1em; }
+      th:nth-child(4), td:nth-child(4) { display: none; } /* Hide Model column */
+      th:nth-child(5), td:nth-child(5) { display: none; } /* Hide Session column */
+      .arguments { max-width: 120px; }
+    }
   </style>
 </head>
 <body>
