@@ -14,10 +14,26 @@
       margin: 0;
       padding: 20px;
     }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
     h1 {
       color: #58a6ff;
-      margin: 0 0 5px 0;
+      margin: 0;
     }
+    .export-btn {
+      background: #238636;
+      border: 1px solid #2ea043;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .export-btn:hover { background: #2ea043; }
     .controls {
       display: flex;
       gap: 15px;
@@ -270,6 +286,16 @@
       border: 1px solid #30363d;
       width: 200px;
     }
+    .clear-btn {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+    .clear-btn:hover { background: #30363d; color: #f85149; }
     .auto-refresh {
       margin-left: auto;
     }
@@ -304,7 +330,10 @@
   </style>
 </head>
 <body>
-  <h1>{{AGENT_NAME}} Tool Call Viewer</h1>
+  <div class="header">
+    <h1>{{AGENT_NAME}} Tool Call Viewer</h1>
+    <button class="export-btn" onclick="exportData()">📥 Export</button>
+  </div>
 
   <div class="stats" id="stats">
     <div class="stat-card">
@@ -321,6 +350,7 @@
     </div>
     <div class="stat-card search-card">
       <input type="text" id="search" placeholder="Search tools or args...">
+      <button class="clear-btn" onclick="clearFilters()" title="Clear all filters">✕</button>
     </div>
   </div>
 
@@ -364,8 +394,8 @@
     <div>
       <label>Per page:</label>
       <select id="per-page">
-        <option value="50">50</option>
-        <option value="100" selected>100</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
         <option value="250">250</option>
         <option value="500">500</option>
       </select>
@@ -588,8 +618,8 @@
       
       for (let i = 0; i < pageCalls.length; i++) {
         const call = pageCalls[i];
-        const date = new Date(call.timestamp);
-        const timeStr = date.toLocaleString();
+        const fullTime = new Date(call.timestamp).toLocaleString();
+        const timeStr = relativeTime(call.timestamp);
         const args = call.arguments ? JSON.stringify(call.arguments, null, 2) : '-';
         const rowIndex = start + i;
         
@@ -597,7 +627,7 @@
           <tr ondblclick="copyRow(${rowIndex})" title="Double-click to copy row">
             <td><span class="tool-name">${call.name}</span></td>
             <td><div class="arguments">${escapeHtml(args)}</div></td>
-            <td class="timestamp">${timeStr}</td>
+            <td class="timestamp" title="${fullTime}">${timeStr}</td>
             <td class="model">${call.model || '-'}</td>
             <td class="session-id">${call.sessionId || '-'}</td>
             <td><button class="copy-btn" onclick="copyRow(${rowIndex}); event.stopPropagation();">📋</button></td>
@@ -648,6 +678,47 @@
       toast.textContent = msg;
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    function exportData() {
+      const data = JSON.stringify(filteredCalls, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tool-calls-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast(`Exported ${filteredCalls.length} calls`);
+    }
+
+    function clearFilters() {
+      document.getElementById('search').value = '';
+      document.getElementById('session-filter').value = '';
+      document.getElementById('date-from').value = '';
+      document.getElementById('date-to').value = '';
+      selectedTypes = new Set(Object.keys(stats));
+      allTypesSelected = true;
+      currentPage = 1;
+      renderTypeFilters();
+      applyFilters();
+      showToast('Filters cleared');
+    }
+
+    function relativeTime(timestamp) {
+      const now = Date.now();
+      const then = new Date(timestamp).getTime();
+      const diff = now - then;
+      
+      const mins = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
+      
+      if (mins < 1) return 'just now';
+      if (mins < 60) return `${mins}m ago`;
+      if (hours < 24) return `${hours}h ago`;
+      if (days < 7) return `${days}d ago`;
+      return new Date(timestamp).toLocaleDateString();
     }
 
     function toggleAutoRefresh() {
