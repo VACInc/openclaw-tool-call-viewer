@@ -86,13 +86,14 @@
       background: #161b22;
       border-radius: 8px;
       overflow: hidden;
-      table-layout: auto;
+      table-layout: fixed;
     }
-    th:nth-child(1), td:nth-child(1) { white-space: nowrap; width: 1%; }
-    th:nth-child(3), td:nth-child(3) { white-space: nowrap; width: 1%; }
-    th:nth-child(4), td:nth-child(4) { white-space: nowrap; width: 1%; }
-    th:nth-child(5), td:nth-child(5) { white-space: nowrap; width: 1%; }
-    th:nth-child(6), td:nth-child(6) { white-space: nowrap; width: 1%; }
+    col.col-tool { width: 100px; }
+    col.col-args { }
+    col.col-time { width: 90px; }
+    col.col-model { width: 130px; }
+    col.col-session { width: 130px; }
+    col.col-copy { width: 50px; }
     th {
       background: #21262d;
       padding: 12px 15px;
@@ -660,6 +661,14 @@
       
       let html = `
         <table>
+          <colgroup>
+            <col class="col-tool">
+            <col class="col-args">
+            <col class="col-time">
+            <col class="col-model">
+            <col class="col-session">
+            <col class="col-copy">
+          </colgroup>
           <thead>
             <tr>
               <th onclick="sortBy('name')" class="${sf === 'name' ? 'sorted' : ''}">Tool${arr('name')}</th>
