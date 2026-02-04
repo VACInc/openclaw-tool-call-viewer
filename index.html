@@ -36,6 +36,13 @@
       color: #58a6ff;
       font-weight: bold;
     }
+    .total-label {
+      font-weight: 600;
+      color: #6e7681;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
     .export-btn {
       background: #238636;
       border: 1px solid #2ea043;
@@ -455,6 +462,7 @@
   <div class="header">
     <h1>{{AGENT_NAME}} Tool Call Viewer</h1>
     <div class="header-totals">
+      <span class="header-stat total-label">TOTAL</span>
       <span class="header-stat"><span id="total-calls">-</span> calls</span>
       <span class="header-stat"><span id="unique-types">-</span> tools</span>
       <span class="header-stat"><span id="sessions-count">-</span> sessions</span>
