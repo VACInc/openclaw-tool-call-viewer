@@ -106,6 +106,16 @@
     }
     th:hover { background: #30363d; }
     th.sorted { color: #58a6ff; }
+    .sort-arrow {
+      display: inline-block;
+      width: 14px;
+      text-align: center;
+      margin-left: 4px;
+      visibility: hidden;
+    }
+    .sort-arrow.visible { visibility: visible; }
+    th:hover .sort-arrow { visibility: visible; opacity: 0.5; }
+    th:hover .sort-arrow.visible { opacity: 1; }
     td {
       padding: 10px 15px;
       border-top: 1px solid #21262d;
@@ -644,18 +654,19 @@
       const start = (currentPage - 1) * perPage;
       const pageCalls = filteredCalls.slice(start, start + perPage);
       
-      const sortField = document.getElementById('sort-field-hidden').value;
-      const arrow = sortOrder === 'desc' ? ' ↓' : ' ↑';
+      const sf = document.getElementById('sort-field-hidden').value;
+      const a = sortOrder === 'desc' ? '↓' : '↑';
+      const arr = (field) => `<span class="sort-arrow ${sf === field ? 'visible' : ''}">${sf === field ? a : '↓'}</span>`;
       
       let html = `
         <table>
           <thead>
             <tr>
-              <th onclick="sortBy('name')" class="${sortField === 'name' ? 'sorted' : ''}">Tool${sortField === 'name' ? arrow : ''}</th>
+              <th onclick="sortBy('name')" class="${sf === 'name' ? 'sorted' : ''}">Tool${arr('name')}</th>
               <th>Arguments</th>
-              <th onclick="sortBy('timestamp')" class="${sortField === 'timestamp' ? 'sorted' : ''}">Time${sortField === 'timestamp' ? arrow : ''}</th>
-              <th onclick="sortBy('model')" class="${sortField === 'model' ? 'sorted' : ''}">Model${sortField === 'model' ? arrow : ''}</th>
-              <th onclick="sortBy('sessionId')" class="${sortField === 'sessionId' ? 'sorted' : ''}">Session${sortField === 'sessionId' ? arrow : ''}</th>
+              <th onclick="sortBy('timestamp')" class="${sf === 'timestamp' ? 'sorted' : ''}">Time${arr('timestamp')}</th>
+              <th onclick="sortBy('model')" class="${sf === 'model' ? 'sorted' : ''}">Model${arr('model')}</th>
+              <th onclick="sortBy('sessionId')" class="${sf === 'sessionId' ? 'sorted' : ''}">Session${arr('sessionId')}</th>
               <th>Copy</th>
             </tr>
           </thead>
