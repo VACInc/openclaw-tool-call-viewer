@@ -141,10 +141,12 @@ function serveStatic(res, filePath, contentType) {
     let content = fs.readFileSync(filePath, 'utf8');
     // Template the agent name and icon
     content = content.replace(/\{\{AGENT_NAME\}\}/g, AGENT_NAME);
-    // Extract first emoji/character for favicon
+    // Extract first emoji/character for favicon, strip from plain name
     const iconMatch = AGENT_NAME.match(/\p{Emoji}/u);
     const agentIcon = iconMatch ? iconMatch[0] : '🔧';
+    const agentNamePlain = AGENT_NAME.replace(/\p{Emoji}\s*/gu, '').trim();
     content = content.replace(/\{\{AGENT_ICON\}\}/g, agentIcon);
+    content = content.replace(/\{\{AGENT_NAME_PLAIN\}\}/g, agentNamePlain);
     res.writeHead(200, { 'Content-Type': contentType });
     res.end(content);
   } catch (e) {
