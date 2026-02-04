@@ -86,7 +86,13 @@
       background: #161b22;
       border-radius: 8px;
       overflow: hidden;
+      table-layout: auto;
     }
+    th:nth-child(1), td:nth-child(1) { white-space: nowrap; width: 1%; }
+    th:nth-child(3), td:nth-child(3) { white-space: nowrap; width: 1%; }
+    th:nth-child(4), td:nth-child(4) { white-space: nowrap; width: 1%; }
+    th:nth-child(5), td:nth-child(5) { white-space: nowrap; width: 1%; }
+    th:nth-child(6), td:nth-child(6) { white-space: nowrap; width: 1%; }
     th {
       background: #21262d;
       padding: 12px 15px;
@@ -290,10 +296,11 @@
       background: #21262d;
       border: 1px solid #30363d;
       color: #8b949e;
-      padding: 6px 10px;
-      border-radius: 6px;
+      padding: 12px 16px;
+      border-radius: 8px;
       cursor: pointer;
-      margin-left: 8px;
+      font-size: 13px;
+      white-space: nowrap;
     }
     .clear-btn:hover { background: #30363d; color: #f85149; }
     .auto-refresh {
@@ -383,8 +390,8 @@
     </div>
     <div class="stat-card search-card">
       <input type="text" id="search" placeholder="Search tools or args...">
-      <button class="clear-btn" onclick="clearFilters()" title="Clear all filters">✕</button>
     </div>
+    <button class="clear-btn" onclick="clearFilters()" title="Clear all filters">✕ Clear</button>
   </div>
 
   <div class="controls">
