@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TARS Tool Viewer</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      color: #58a6ff;
+      margin-bottom: 5px;
+    }
+    .subtitle {
+      color: #8b949e;
+      margin-bottom: 20px;
+    }
+    .controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .controls label {
+      color: #8b949e;
+      font-size: 0.9em;
+    }
+    select, input {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    select:focus, input:focus {
+      outline: none;
+      border-color: #58a6ff;
+    }
+    .stats {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 15px 20px;
+      min-width: 120px;
+    }
+    .stat-card .value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #58a6ff;
+    }
+    .stat-card .label {
+      font-size: 12px;
+      color: #8b949e;
+      text-transform: uppercase;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #161b22;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th {
+      background: #21262d;
+      padding: 12px 15px;
+      text-align: left;
+      font-weight: 600;
+      color: #8b949e;
+      cursor: pointer;
+      user-select: none;
+      position: sticky;
+      top: 0;
+    }
+    th:hover { background: #30363d; }
+    th.sorted { color: #58a6ff; }
+    th.sorted::after { content: ' ↓'; }
+    th.sorted.asc::after { content: ' ↑'; }
+    td {
+      padding: 10px 15px;
+      border-top: 1px solid #21262d;
+      vertical-align: top;
+    }
+    tr:hover { background: #1c2128; }
+    tr { cursor: pointer; }
+    .copy-toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #238636;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 1000;
+    }
+    .copy-toast.show { opacity: 1; }
+    .copy-btn {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .copy-btn:hover { background: #30363d; color: #c9d1d9; }
+    .tool-name {
+      font-family: 'SF Mono', Monaco, monospace;
+      background: #21262d;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #f0883e;
+    }
+    .timestamp {
+      color: #8b949e;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .session-id {
+      font-family: monospace;
+      font-size: 11px;
+      color: #6e7681;
+    }
+    .arguments {
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 12px;
+      max-width: 500px;
+      max-height: 100px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      background: #0d1117;
+      padding: 8px;
+      border-radius: 4px;
+    }
+    .model {
+      font-size: 11px;
+      color: #7ee787;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #8b949e;
+    }
+    .pagination {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 20px;
+      align-items: center;
+    }
+    .pagination button {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .pagination button:hover { background: #30363d; }
+    .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .page-info { color: #8b949e; }
+    .type-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    .type-dropdown-btn {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      min-width: 180px;
+      text-align: left;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .type-dropdown-btn:hover { border-color: #58a6ff; }
+    .type-dropdown-btn::after { content: '▼'; font-size: 10px; margin-left: 10px; }
+    .type-dropdown-content {
+      display: none;
+      position: absolute;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      min-width: 220px;
+      max-height: 350px;
+      overflow-y: auto;
+      z-index: 100;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .type-dropdown-content.show { display: block; }
+    .type-dropdown-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .type-dropdown-item:hover { background: #21262d; }
+    .type-dropdown-item input[type="checkbox"] {
+      accent-color: #58a6ff;
+      width: 16px;
+      height: 16px;
+    }
+    .type-dropdown-item .name { flex: 1; }
+    .type-dropdown-item .count {
+      background: #30363d;
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-size: 11px;
+      color: #8b949e;
+    }
+    .type-dropdown-actions {
+      padding: 8px 12px;
+      border-top: 1px solid #30363d;
+      display: flex;
+      gap: 8px;
+    }
+    .type-dropdown-actions button {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .type-dropdown-actions button:hover { background: #30363d; color: #c9d1d9; }
+  </style>
+</head>
+<body>
+  <h1>🔳 TARS Tool Viewer</h1>
+  <p class="subtitle">OpenClaw session tool call history</p>
+
+  <div class="stats" id="stats">
+    <div class="stat-card">
+      <div class="value" id="total-calls">-</div>
+      <div class="label">Total Calls</div>
+    </div>
+    <div class="stat-card">
+      <div class="value" id="unique-types">-</div>
+      <div class="label">Tool Types</div>
+    </div>
+    <div class="stat-card">
+      <div class="value" id="sessions-count">-</div>
+      <div class="label">Sessions</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div>
+      <label>Search:</label>
+      <input type="text" id="search" placeholder="Filter by tool name or args...">
+    </div>
+    <div>
+      <label>Session:</label>
+      <select id="session-filter">
+        <option value="">All Sessions</option>
+      </select>
+    </div>
+    <div>
+      <label>From:</label>
+      <input type="date" id="date-from">
+    </div>
+    <div>
+      <label>To:</label>
+      <input type="date" id="date-to">
+    </div>
+    <div>
+      <label>Sort by:</label>
+      <select id="sort-field">
+        <option value="timestamp">Date</option>
+        <option value="name">Tool Name</option>
+        <option value="sessionId">Session</option>
+        <option value="model">Model</option>
+      </select>
+    </div>
+    <div>
+      <label>Order:</label>
+      <select id="sort-order">
+        <option value="desc">Newest First</option>
+        <option value="asc">Oldest First</option>
+      </select>
+    </div>
+    <div>
+      <label>Per page:</label>
+      <select id="per-page">
+        <option value="50">50</option>
+        <option value="100" selected>100</option>
+        <option value="250">250</option>
+        <option value="500">500</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="type-dropdown" id="type-dropdown">
+    <button class="type-dropdown-btn" onclick="toggleTypeDropdown()">
+      <span id="type-dropdown-label">All Tools</span>
+    </button>
+    <div class="type-dropdown-content" id="type-dropdown-content">
+      <div class="type-dropdown-actions">
+        <button onclick="selectAllTypes()">All</button>
+        <button onclick="selectNoTypes()">None</button>
+      </div>
+      <div id="type-dropdown-items"></div>
+    </div>
+  </div>
+
+  <div id="content">
+    <div class="loading">Loading tool calls...</div>
+  </div>
+
+  <div class="pagination" id="pagination"></div>
+  <div class="copy-toast" id="copy-toast">Copied to clipboard!</div>
+
+  <script>
+    let allCalls = [];
+    let filteredCalls = [];
+    let currentPage = 1;
+    let selectedTypes = new Set();
+    let stats = {};
+    let sessions = [];
+
+    async function loadData() {
+      try {
+        const res = await fetch('/api/tools');
+        allCalls = await res.json();
+        
+        // Calculate stats
+        stats = {};
+        const sessionSet = new Set();
+        for (const call of allCalls) {
+          stats[call.name] = (stats[call.name] || 0) + 1;
+          sessionSet.add(call.sessionId);
+        }
+        sessions = Array.from(sessionSet).sort();
+        
+        document.getElementById('total-calls').textContent = allCalls.length.toLocaleString();
+        document.getElementById('unique-types').textContent = Object.keys(stats).length;
+        document.getElementById('sessions-count').textContent = sessions.length;
+        
+        // Populate session dropdown
+        const sessionSelect = document.getElementById('session-filter');
+        sessions.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s;
+          opt.textContent = s.slice(0, 8) + '...';
+          sessionSelect.appendChild(opt);
+        });
+        
+        // Set default date range (last 7 days)
+        const today = new Date();
+        const weekAgo = new Date(today - 7 * 24 * 60 * 60 * 1000);
+        document.getElementById('date-to').value = today.toISOString().split('T')[0];
+        document.getElementById('date-from').value = weekAgo.toISOString().split('T')[0];
+        
+        renderTypeFilters();
+        applyFilters();
+      } catch (e) {
+        document.getElementById('content').innerHTML = '<div class="loading">Error loading data: ' + e.message + '</div>';
+      }
+    }
+
+    function renderTypeFilters() {
+      const container = document.getElementById('type-dropdown-items');
+      const sorted = Object.entries(stats).sort((a, b) => b[1] - a[1]);
+      
+      // If no selection, select all by default
+      if (selectedTypes.size === 0) {
+        sorted.forEach(([name]) => selectedTypes.add(name));
+      }
+      
+      container.innerHTML = '';
+      for (const [name, count] of sorted) {
+        const checked = selectedTypes.has(name) ? 'checked' : '';
+        container.innerHTML += `
+          <label class="type-dropdown-item">
+            <input type="checkbox" value="${name}" ${checked} onchange="toggleType('${name}')">
+            <span class="name">${name}</span>
+            <span class="count">${count}</span>
+          </label>
+        `;
+      }
+      
+      updateTypeLabel();
+    }
+    
+    function toggleTypeDropdown() {
+      document.getElementById('type-dropdown-content').classList.toggle('show');
+    }
+    
+    function toggleType(name) {
+      if (selectedTypes.has(name)) {
+        selectedTypes.delete(name);
+      } else {
+        selectedTypes.add(name);
+      }
+      currentPage = 1;
+      updateTypeLabel();
+      applyFilters();
+    }
+    
+    function selectAllTypes() {
+      Object.keys(stats).forEach(name => selectedTypes.add(name));
+      currentPage = 1;
+      renderTypeFilters();
+      applyFilters();
+    }
+    
+    function selectNoTypes() {
+      selectedTypes.clear();
+      currentPage = 1;
+      renderTypeFilters();
+      applyFilters();
+    }
+    
+    function updateTypeLabel() {
+      const total = Object.keys(stats).length;
+      const label = document.getElementById('type-dropdown-label');
+      if (selectedTypes.size === 0) {
+        label.textContent = 'No Tools Selected';
+      } else if (selectedTypes.size === total) {
+        label.textContent = 'All Tools';
+      } else if (selectedTypes.size <= 2) {
+        label.textContent = Array.from(selectedTypes).join(', ');
+      } else {
+        label.textContent = `${selectedTypes.size} tools selected`;
+      }
+    }
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.type-dropdown')) {
+        document.getElementById('type-dropdown-content').classList.remove('show');
+      }
+    });
+
+    function applyFilters() {
+      const search = document.getElementById('search').value.toLowerCase();
+      const sortField = document.getElementById('sort-field').value;
+      const sortOrder = document.getElementById('sort-order').value;
+      const sessionFilter = document.getElementById('session-filter').value;
+      const dateFrom = document.getElementById('date-from').value;
+      const dateTo = document.getElementById('date-to').value;
+      
+      filteredCalls = allCalls.filter(call => {
+        if (selectedTypes.size > 0 && !selectedTypes.has(call.name)) return false;
+        if (sessionFilter && call.sessionId !== sessionFilter) return false;
+        
+        // Date filtering
+        if (dateFrom || dateTo) {
+          const callDate = new Date(call.timestamp);
+          if (dateFrom && callDate < new Date(dateFrom)) return false;
+          if (dateTo && callDate > new Date(dateTo + 'T23:59:59')) return false;
+        }
+        
+        if (search) {
+          const argsStr = JSON.stringify(call.arguments || {}).toLowerCase();
+          return call.name.toLowerCase().includes(search) || argsStr.includes(search);
+        }
+        return true;
+      });
+      
+      filteredCalls.sort((a, b) => {
+        let cmp = 0;
+        if (sortField === 'timestamp') {
+          cmp = new Date(a.timestamp) - new Date(b.timestamp);
+        } else if (sortField === 'name') {
+          cmp = a.name.localeCompare(b.name);
+        } else if (sortField === 'sessionId') {
+          cmp = (a.sessionId || '').localeCompare(b.sessionId || '');
+        } else if (sortField === 'model') {
+          cmp = (a.model || '').localeCompare(b.model || '');
+        }
+        return sortOrder === 'asc' ? cmp : -cmp;
+      });
+      
+      render();
+    }
+
+    function render() {
+      const perPage = parseInt(document.getElementById('per-page').value);
+      const totalPages = Math.ceil(filteredCalls.length / perPage);
+      const start = (currentPage - 1) * perPage;
+      const pageCalls = filteredCalls.slice(start, start + perPage);
+      
+      let html = `
+        <table>
+          <thead>
+            <tr>
+              <th>Tool</th>
+              <th>Arguments</th>
+              <th>Time</th>
+              <th>Model</th>
+              <th>Session</th>
+              <th>Copy</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      
+      for (let i = 0; i < pageCalls.length; i++) {
+        const call = pageCalls[i];
+        const date = new Date(call.timestamp);
+        const timeStr = date.toLocaleString();
+        const args = call.arguments ? JSON.stringify(call.arguments, null, 2) : '-';
+        const rowIndex = start + i;
+        
+        html += `
+          <tr ondblclick="copyRow(${rowIndex})" title="Double-click to copy row">
+            <td><span class="tool-name">${call.name}</span></td>
+            <td><div class="arguments">${escapeHtml(args)}</div></td>
+            <td class="timestamp">${timeStr}</td>
+            <td class="model">${call.model || '-'}</td>
+            <td class="session-id">${call.sessionId || '-'}</td>
+            <td><button class="copy-btn" onclick="copyRow(${rowIndex}); event.stopPropagation();">📋</button></td>
+          </tr>
+        `;
+      }
+      
+      html += '</tbody></table>';
+      document.getElementById('content').innerHTML = html;
+      
+      // Pagination
+      document.getElementById('pagination').innerHTML = `
+        <button ${currentPage === 1 ? 'disabled' : ''} onclick="goPage(1)">«</button>
+        <button ${currentPage === 1 ? 'disabled' : ''} onclick="goPage(${currentPage - 1})">‹</button>
+        <span class="page-info">Page ${currentPage} of ${totalPages} (${filteredCalls.length.toLocaleString()} results)</span>
+        <button ${currentPage === totalPages ? 'disabled' : ''} onclick="goPage(${currentPage + 1})">›</button>
+        <button ${currentPage === totalPages ? 'disabled' : ''} onclick="goPage(${totalPages})">»</button>
+      `;
+    }
+
+    function goPage(page) {
+      currentPage = page;
+      render();
+      window.scrollTo(0, 0);
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function copyRow(index) {
+      const call = filteredCalls[index];
+      const data = {
+        tool: call.name,
+        arguments: call.arguments,
+        timestamp: call.timestamp,
+        model: call.model,
+        sessionId: call.sessionId
+      };
+      const text = JSON.stringify(data, null, 2);
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Copied to clipboard!');
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('copy-toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // Event listeners
+    document.getElementById('search').addEventListener('input', () => { currentPage = 1; applyFilters(); });
+    document.getElementById('session-filter').addEventListener('change', () => { currentPage = 1; applyFilters(); });
+    document.getElementById('date-from').addEventListener('change', () => { currentPage = 1; applyFilters(); });
+    document.getElementById('date-to').addEventListener('change', () => { currentPage = 1; applyFilters(); });
+    document.getElementById('sort-field').addEventListener('change', applyFilters);
+    document.getElementById('sort-order').addEventListener('change', applyFilters);
+    document.getElementById('per-page').addEventListener('change', () => { currentPage = 1; render(); });
+
+    // Load data on start
+    loadData();
+  </script>
+</body>
+</html>
