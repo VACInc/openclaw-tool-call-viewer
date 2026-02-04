@@ -858,6 +858,70 @@
       }
     });
 
+    function updateFilteredCounts() {
+      const search = document.getElementById('search').value.toLowerCase();
+      const dateFrom = document.getElementById('date-from').value;
+      const dateTo = document.getElementById('date-to').value;
+      
+      // Base filter (date + search only)
+      const baseFiltered = allCalls.filter(call => {
+        if (dateFrom || dateTo) {
+          const callDate = new Date(call.timestamp);
+          if (dateFrom && callDate < new Date(dateFrom)) return false;
+          if (dateTo && callDate > new Date(dateTo + 'T23:59:59')) return false;
+        }
+        if (search) {
+          const argsStr = JSON.stringify(call.arguments || {}).toLowerCase();
+          if (!call.name.toLowerCase().includes(search) && !argsStr.includes(search)) return false;
+        }
+        return true;
+      });
+      
+      // Tool counts (apply model + session filters but NOT tool filter)
+      const toolCounts = {};
+      baseFiltered.forEach(call => {
+        if (!allModelsSelected && !selectedModels.has(call.model || 'unknown')) return;
+        if (!allSessionsSelected && !selectedSessions.has(call.sessionId || 'unknown')) return;
+        toolCounts[call.name] = (toolCounts[call.name] || 0) + 1;
+      });
+      document.querySelectorAll('#type-dropdown-items .type-dropdown-item').forEach(item => {
+        const name = item.querySelector('input').value;
+        const countEl = item.querySelector('.count');
+        countEl.textContent = toolCounts[name] || 0;
+        item.style.opacity = (toolCounts[name] || 0) === 0 ? '0.4' : '1';
+      });
+      
+      // Model counts (apply tool + session filters but NOT model filter)
+      const modelCounts = {};
+      baseFiltered.forEach(call => {
+        if (!allTypesSelected && !selectedTypes.has(call.name)) return;
+        if (!allSessionsSelected && !selectedSessions.has(call.sessionId || 'unknown')) return;
+        const m = call.model || 'unknown';
+        modelCounts[m] = (modelCounts[m] || 0) + 1;
+      });
+      document.querySelectorAll('#model-dropdown-items .type-dropdown-item').forEach(item => {
+        const name = item.querySelector('input').value;
+        const countEl = item.querySelector('.count');
+        countEl.textContent = modelCounts[name] || 0;
+        item.style.opacity = (modelCounts[name] || 0) === 0 ? '0.4' : '1';
+      });
+      
+      // Session counts (apply tool + model filters but NOT session filter)
+      const sessCounts = {};
+      baseFiltered.forEach(call => {
+        if (!allTypesSelected && !selectedTypes.has(call.name)) return;
+        if (!allModelsSelected && !selectedModels.has(call.model || 'unknown')) return;
+        const s = call.sessionId || 'unknown';
+        sessCounts[s] = (sessCounts[s] || 0) + 1;
+      });
+      document.querySelectorAll('#session-dropdown-items .type-dropdown-item').forEach(item => {
+        const name = item.querySelector('input').value;
+        const countEl = item.querySelector('.count');
+        countEl.textContent = sessCounts[name] || 0;
+        item.style.opacity = (sessCounts[name] || 0) === 0 ? '0.4' : '1';
+      });
+    }
+
     let filterTimeout = null;
     function debouncedApplyFilters() {
       if (filterTimeout) clearTimeout(filterTimeout);
@@ -908,6 +972,9 @@
         }
         return true;
       });
+      
+      // Update dropdown counts based on filtered results
+      updateFilteredCounts();
       
       filteredCalls.sort((a, b) => {
         let cmp = 0;
