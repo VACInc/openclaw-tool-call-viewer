@@ -280,6 +280,17 @@
       font-size: 11px;
       color: #8b949e;
     }
+    .dropdown-search {
+      padding: 8px 12px;
+      border-bottom: 1px solid #30363d;
+    }
+    .dropdown-search input {
+      width: 100%;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
     .type-dropdown-actions {
       padding: 8px 12px;
       border-top: 1px solid #30363d;
@@ -459,6 +470,7 @@
         <span id="type-dropdown-label">All Tools</span>
       </button>
       <div class="type-dropdown-content" id="type-dropdown-content">
+        <div class="dropdown-search"><input type="text" placeholder="Search tools..." oninput="filterDropdown('type', this.value)" onclick="event.stopPropagation()"></div>
         <div class="type-dropdown-actions">
           <button onclick="selectAllTypes()">All</button>
           <button onclick="selectNoTypes()">None</button>
@@ -471,6 +483,7 @@
         <span id="model-dropdown-label">All Models</span>
       </button>
       <div class="type-dropdown-content" id="model-dropdown-content">
+        <div class="dropdown-search"><input type="text" placeholder="Search models..." oninput="filterDropdown('model', this.value)" onclick="event.stopPropagation()"></div>
         <div class="type-dropdown-actions">
           <button onclick="selectAllModels()">All</button>
           <button onclick="selectNoModels()">None</button>
@@ -483,6 +496,7 @@
         <span id="session-dropdown-label">Sessions</span>
       </button>
       <div class="type-dropdown-content" id="session-dropdown-content">
+        <div class="dropdown-search"><input type="text" placeholder="Search sessions..." oninput="filterDropdown('session', this.value)" onclick="event.stopPropagation()"></div>
         <div class="type-dropdown-actions">
           <button onclick="selectAllSessions()">All</button>
           <button onclick="selectNoSessions()">None</button>
@@ -796,6 +810,16 @@
       } else {
         label.textContent = `${selectedSessions.size} sessions`;
       }
+    }
+
+    function filterDropdown(type, query) {
+      const q = query.toLowerCase();
+      const containerId = type + '-dropdown-items';
+      const items = document.getElementById(containerId).querySelectorAll('.type-dropdown-item');
+      items.forEach(item => {
+        const name = item.querySelector('.name').textContent.toLowerCase();
+        item.style.display = name.includes(q) ? '' : 'none';
+      });
     }
 
     // Close dropdowns when clicking outside
