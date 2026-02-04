@@ -296,6 +296,16 @@
       font-size: 12px;
     }
     .type-dropdown-actions button:hover { background: #30363d; color: #c9d1d9; }
+    .model-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    .model-dropdown .type-dropdown-content {
+      display: none;
+    }
+    .model-dropdown .type-dropdown-content.show {
+      display: block;
+    }
     .sort-group {
       display: flex;
       align-items: center;
@@ -446,6 +456,18 @@
         <div id="type-dropdown-items"></div>
       </div>
     </div>
+    <div class="model-dropdown" id="model-dropdown">
+      <button class="type-dropdown-btn" onclick="toggleModelDropdown()">
+        <span id="model-dropdown-label">All Models</span>
+      </button>
+      <div class="type-dropdown-content" id="model-dropdown-content">
+        <div class="type-dropdown-actions">
+          <button onclick="selectAllModels()">All</button>
+          <button onclick="selectNoModels()">None</button>
+        </div>
+        <div id="model-dropdown-items"></div>
+      </div>
+    </div>
     <div>
       <label>Session:</label>
       <select id="session-filter">
@@ -491,6 +513,9 @@
     let currentPage = 1;
     let selectedTypes = new Set();
     let allTypesSelected = true;
+    let selectedModels = new Set();
+    let allModelsSelected = true;
+    let modelStats = {};
     let sortOrder = 'desc';
     let stats = {};
     let sessions = [];
@@ -510,9 +535,16 @@
         }
         sessions = Array.from(sessionSet).sort();
         
+        for (const call of allCalls) {
+          const m = call.model || 'unknown';
+          modelStats[m] = (modelStats[m] || 0) + 1;
+        }
+        
         document.getElementById('total-calls').textContent = allCalls.length.toLocaleString();
         document.getElementById('unique-types').textContent = Object.keys(stats).length;
         document.getElementById('sessions-count').textContent = sessions.length;
+        
+        renderModelFilters();
         
         // Populate session dropdown
         const sessionSelect = document.getElementById('session-filter');
@@ -612,10 +644,82 @@
       }
     }
     
-    // Close dropdown when clicking outside
+    // Model filter functions
+    function renderModelFilters() {
+      const container = document.getElementById('model-dropdown-items');
+      const sorted = Object.entries(modelStats).sort((a, b) => b[1] - a[1]);
+      
+      if (allModelsSelected && selectedModels.size === 0) {
+        sorted.forEach(([name]) => selectedModels.add(name));
+      }
+      
+      container.innerHTML = '';
+      for (const [name, count] of sorted) {
+        const checked = selectedModels.has(name) ? 'checked' : '';
+        container.innerHTML += `
+          <label class="type-dropdown-item">
+            <input type="checkbox" value="${name}" ${checked} onchange="toggleModel('${name}')">
+            <span class="name">${name}</span>
+            <span class="count">${count}</span>
+          </label>
+        `;
+      }
+      updateModelLabel();
+    }
+
+    function toggleModelDropdown() {
+      document.getElementById('model-dropdown-content').classList.toggle('show');
+    }
+
+    function toggleModel(name) {
+      if (selectedModels.has(name)) {
+        selectedModels.delete(name);
+      } else {
+        selectedModels.add(name);
+      }
+      allModelsSelected = selectedModels.size === Object.keys(modelStats).length;
+      currentPage = 1;
+      updateModelLabel();
+      applyFilters();
+    }
+
+    function selectAllModels() {
+      Object.keys(modelStats).forEach(name => selectedModels.add(name));
+      allModelsSelected = true;
+      currentPage = 1;
+      renderModelFilters();
+      applyFilters();
+    }
+
+    function selectNoModels() {
+      selectedModels.clear();
+      allModelsSelected = false;
+      currentPage = 1;
+      renderModelFilters();
+      applyFilters();
+    }
+
+    function updateModelLabel() {
+      const total = Object.keys(modelStats).length;
+      const label = document.getElementById('model-dropdown-label');
+      if (selectedModels.size === 0) {
+        label.textContent = 'No Models Selected';
+      } else if (selectedModels.size === total) {
+        label.textContent = 'All Models';
+      } else if (selectedModels.size === 1) {
+        label.textContent = Array.from(selectedModels)[0];
+      } else {
+        label.textContent = `${selectedModels.size} models selected`;
+      }
+    }
+
+    // Close dropdowns when clicking outside
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.type-dropdown')) {
         document.getElementById('type-dropdown-content').classList.remove('show');
+      }
+      if (!e.target.closest('.model-dropdown')) {
+        document.getElementById('model-dropdown-content').classList.remove('show');
       }
     });
 
@@ -642,6 +746,8 @@
         if (!allTypesSelected && selectedTypes.size === 0) return false;
         // If some selected, filter by them
         if (selectedTypes.size > 0 && !selectedTypes.has(call.name)) return false;
+        if (!allModelsSelected && selectedModels.size === 0) return false;
+        if (selectedModels.size > 0 && !selectedModels.has(call.model || 'unknown')) return false;
         if (sessionFilter && call.sessionId !== sessionFilter) return false;
         
         // Date filtering
