@@ -306,6 +306,16 @@
     .model-dropdown .type-dropdown-content.show {
       display: block;
     }
+    .session-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    .session-dropdown .type-dropdown-content {
+      display: none;
+    }
+    .session-dropdown .type-dropdown-content.show {
+      display: block;
+    }
     .sort-group {
       display: flex;
       align-items: center;
@@ -468,11 +478,17 @@
         <div id="model-dropdown-items"></div>
       </div>
     </div>
-    <div>
-      <label>Session:</label>
-      <select id="session-filter">
-        <option value="">All Sessions</option>
-      </select>
+    <div class="session-dropdown" id="session-dropdown">
+      <button class="type-dropdown-btn" onclick="toggleSessionDropdown()">
+        <span id="session-dropdown-label">Sessions</span>
+      </button>
+      <div class="type-dropdown-content" id="session-dropdown-content">
+        <div class="type-dropdown-actions">
+          <button onclick="selectAllSessions()">All</button>
+          <button onclick="selectNoSessions()">None</button>
+        </div>
+        <div id="session-dropdown-items"></div>
+      </div>
     </div>
     <div class="date-range">
       <label>Date:</label>
@@ -516,6 +532,9 @@
     let selectedModels = new Set();
     let allModelsSelected = true;
     let modelStats = {};
+    let selectedSessions = new Set();
+    let allSessionsSelected = true;
+    let sessionStats = {};
     let sortOrder = 'desc';
     let stats = {};
     let sessions = [];
@@ -544,16 +563,13 @@
         document.getElementById('unique-types').textContent = Object.keys(stats).length;
         document.getElementById('sessions-count').textContent = sessions.length;
         
-        renderModelFilters();
+        for (const call of allCalls) {
+          const s = call.sessionId || 'unknown';
+          sessionStats[s] = (sessionStats[s] || 0) + 1;
+        }
         
-        // Populate session dropdown
-        const sessionSelect = document.getElementById('session-filter');
-        sessions.forEach(s => {
-          const opt = document.createElement('option');
-          opt.value = s;
-          opt.textContent = s.slice(0, 8) + '...';
-          sessionSelect.appendChild(opt);
-        });
+        renderModelFilters();
+        renderSessionFilters();
         
         // Set default date range (last 7 days)
         const today = new Date();
@@ -713,6 +729,75 @@
       }
     }
 
+    // Session filter functions
+    function renderSessionFilters() {
+      const container = document.getElementById('session-dropdown-items');
+      const sorted = Object.entries(sessionStats).sort((a, b) => b[1] - a[1]);
+      
+      if (allSessionsSelected && selectedSessions.size === 0) {
+        sorted.forEach(([name]) => selectedSessions.add(name));
+      }
+      
+      container.innerHTML = '';
+      for (const [name, count] of sorted) {
+        const checked = selectedSessions.has(name) ? 'checked' : '';
+        container.innerHTML += `
+          <label class="type-dropdown-item">
+            <input type="checkbox" value="${name}" ${checked} onchange="toggleSession('${name}')">
+            <span class="name" style="font-family:monospace;font-size:11px">${name.slice(0, 8)}...</span>
+            <span class="count">${count}</span>
+          </label>
+        `;
+      }
+      updateSessionLabel();
+    }
+
+    function toggleSessionDropdown() {
+      document.getElementById('session-dropdown-content').classList.toggle('show');
+    }
+
+    function toggleSession(name) {
+      if (selectedSessions.has(name)) {
+        selectedSessions.delete(name);
+      } else {
+        selectedSessions.add(name);
+      }
+      allSessionsSelected = selectedSessions.size === Object.keys(sessionStats).length;
+      currentPage = 1;
+      updateSessionLabel();
+      applyFilters();
+    }
+
+    function selectAllSessions() {
+      Object.keys(sessionStats).forEach(name => selectedSessions.add(name));
+      allSessionsSelected = true;
+      currentPage = 1;
+      renderSessionFilters();
+      applyFilters();
+    }
+
+    function selectNoSessions() {
+      selectedSessions.clear();
+      allSessionsSelected = false;
+      currentPage = 1;
+      renderSessionFilters();
+      applyFilters();
+    }
+
+    function updateSessionLabel() {
+      const total = Object.keys(sessionStats).length;
+      const label = document.getElementById('session-dropdown-label');
+      if (selectedSessions.size === 0) {
+        label.textContent = 'No Sessions';
+      } else if (selectedSessions.size === total) {
+        label.textContent = 'Sessions';
+      } else if (selectedSessions.size === 1) {
+        label.textContent = Array.from(selectedSessions)[0].slice(0, 8) + '...';
+      } else {
+        label.textContent = `${selectedSessions.size} sessions`;
+      }
+    }
+
     // Close dropdowns when clicking outside
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.type-dropdown')) {
@@ -720,6 +805,9 @@
       }
       if (!e.target.closest('.model-dropdown')) {
         document.getElementById('model-dropdown-content').classList.remove('show');
+      }
+      if (!e.target.closest('.session-dropdown')) {
+        document.getElementById('session-dropdown-content').classList.remove('show');
       }
     });
 
@@ -737,7 +825,6 @@
     function applyFilters() {
       const search = document.getElementById('search').value.toLowerCase();
       const sortField = document.getElementById('sort-field-hidden').value;
-      const sessionFilter = document.getElementById('session-filter').value;
       const dateFrom = document.getElementById('date-from').value;
       const dateTo = document.getElementById('date-to').value;
       
@@ -748,7 +835,8 @@
         if (selectedTypes.size > 0 && !selectedTypes.has(call.name)) return false;
         if (!allModelsSelected && selectedModels.size === 0) return false;
         if (selectedModels.size > 0 && !selectedModels.has(call.model || 'unknown')) return false;
-        if (sessionFilter && call.sessionId !== sessionFilter) return false;
+        if (!allSessionsSelected && selectedSessions.size === 0) return false;
+        if (selectedSessions.size > 0 && !selectedSessions.has(call.sessionId || 'unknown')) return false;
         
         // Date filtering
         if (dateFrom || dateTo) {
@@ -925,13 +1013,18 @@
 
     function clearFilters() {
       document.getElementById('search').value = '';
-      document.getElementById('session-filter').value = '';
       document.getElementById('date-from').value = '';
       document.getElementById('date-to').value = '';
       selectedTypes = new Set(Object.keys(stats));
       allTypesSelected = true;
+      selectedModels = new Set(Object.keys(modelStats));
+      allModelsSelected = true;
+      selectedSessions = new Set(Object.keys(sessionStats));
+      allSessionsSelected = true;
       currentPage = 1;
       renderTypeFilters();
+      renderModelFilters();
+      renderSessionFilters();
       applyFilters();
       showToast('Filters cleared');
     }
@@ -1005,7 +1098,6 @@
 
     // Event listeners
     document.getElementById('search').addEventListener('input', () => { currentPage = 1; applyFilters(); });
-    document.getElementById('session-filter').addEventListener('change', () => { currentPage = 1; applyFilters(); });
     document.getElementById('date-from').addEventListener('change', () => { currentPage = 1; applyFilters(); });
     document.getElementById('date-to').addEventListener('change', () => { currentPage = 1; applyFilters(); });
     document.getElementById('per-page').addEventListener('change', () => { currentPage = 1; render(); });
