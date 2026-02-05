@@ -1191,8 +1191,8 @@
       
       if (enabled) {
         indicator.classList.add('active');
-        autoRefreshInterval = setInterval(refreshData, 10000); // 10 seconds
-        showToast('Auto-refresh enabled (10s)');
+        autoRefreshInterval = setInterval(refreshData, 3000); // 3 seconds
+        showToast('Auto-refresh enabled (3s)');
       } else {
         indicator.classList.remove('active');
         if (autoRefreshInterval) {
@@ -1247,7 +1247,7 @@
     
     // Enable auto-refresh by default
     document.getElementById('refresh-indicator').classList.add('active');
-    autoRefreshInterval = setInterval(refreshData, 10000);
+    autoRefreshInterval = setInterval(refreshData, 3000);
   </script>
 </body>
 </html>
