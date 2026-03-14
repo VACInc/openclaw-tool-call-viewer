@@ -84,11 +84,21 @@ function generateDemoData() {
   return calls.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 }
 
+// Cache to avoid re-parsing all session files on every request
+let _cache = null;
+let _cacheTime = 0;
+const CACHE_TTL_MS = 1000; // 1 second
+
 function parseToolCalls() {
   if (DEMO_MODE) {
     return generateDemoData();
   }
-  
+
+  const now = Date.now();
+  if (_cache && (now - _cacheTime) < CACHE_TTL_MS) {
+    return _cache;
+  }
+
   const files = fs.readdirSync(SESSIONS_DIR).filter(f => f.endsWith('.jsonl'));
   const toolCalls = [];
 
@@ -133,8 +143,15 @@ function parseToolCalls() {
     } catch (e) {}
   }
 
-  return toolCalls.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  _cache = toolCalls.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  _cacheTime = now;
+  return _cache;
 }
+
+// Warm cache on startup in background so first request is fast
+setImmediate(() => {
+  try { parseToolCalls(); } catch (e) {}
+});
 
 function serveStatic(res, filePath, contentType) {
   try {

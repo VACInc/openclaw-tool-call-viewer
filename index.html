@@ -1205,20 +1205,31 @@
 
     async function refreshData() {
       try {
+        // Quick count check first — skip full fetch if nothing changed
+        const statsRes = await fetch('/api/stats');
+        const statsData = await statsRes.json();
+        if (statsData.total === allCalls.length) return; // No new data
+
         const res = await fetch('/api/tools?all=true');
         const newCalls = await res.json();
         
-        // Check if there are new calls
         const newCount = newCalls.length - allCalls.length;
+        if (newCount === 0) return; // Race: caught up between stats and fetch
         
         allCalls = newCalls;
         
         // Recalculate stats
         stats = {};
+        modelStats = {};
+        sessionStats = {};
         const sessionSet = new Set();
         for (const call of allCalls) {
           stats[call.name] = (stats[call.name] || 0) + 1;
           sessionSet.add(call.sessionId);
+          const m = call.model || 'unknown';
+          modelStats[m] = (modelStats[m] || 0) + 1;
+          const s = call.sessionId || 'unknown';
+          sessionStats[s] = (sessionStats[s] || 0) + 1;
         }
         sessions = Array.from(sessionSet).sort();
         
@@ -1226,11 +1237,14 @@
         document.getElementById('unique-types').textContent = Object.keys(stats).length;
         document.getElementById('sessions-count').textContent = sessions.length;
         
+        // Add any new types/models/sessions to selection sets
+        Object.keys(stats).forEach(name => { if (allTypesSelected) selectedTypes.add(name); });
+        Object.keys(modelStats).forEach(name => { if (allModelsSelected) selectedModels.add(name); });
+        Object.keys(sessionStats).forEach(name => { if (allSessionsSelected) selectedSessions.add(name); });
+        
         applyFilters();
         
-        if (newCount > 0) {
-          showToast(`+${newCount} new tool call${newCount > 1 ? 's' : ''}`);
-        }
+        showToast(`+${newCount} new tool call${newCount > 1 ? 's' : ''}`);
       } catch (e) {
         console.error('Refresh failed:', e);
       }
