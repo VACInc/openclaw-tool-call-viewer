@@ -6,7 +6,7 @@ const path = require('path');
 // Parse CLI arguments
 const args = process.argv.slice(2);
 let PORT = 3847;
-let SESSIONS_DIR = path.join(process.env.HOME, '.openclaw/agents/main/sessions');
+let SESSIONS_DIR = path.join(process.env.HOME, '.openclaw/agents');
 let DEMO_MODE = false;
 let AGENT_NAME = process.env.OPENCLAW_AGENT_NAME || 'OpenClaw';
 
@@ -30,8 +30,8 @@ Usage: node server.js [options]
 
 Options:
   -p, --port <port>       Port to listen on (default: 3847)
-  -s, --sessions <path>   Path to sessions directory 
-                          (default: ~/.openclaw/agents/main/sessions)
+  -s, --sessions <path>   Path to agents/sessions directory tree
+                          (default: ~/.openclaw/agents)
   -n, --name <name>       Agent name for title (default: OpenClaw, or env OPENCLAW_AGENT_NAME)
       --demo              Run with fake demo data (for screenshots)
   -h, --help              Show this help message
@@ -84,10 +84,42 @@ function generateDemoData() {
   return calls.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 }
 
-// Cache to avoid re-parsing all session files on every request
+// Cache + file watching for real-time updates
 let _cache = null;
 let _cacheTime = 0;
-const CACHE_TTL_MS = 1000; // 1 second
+let _version = 0; // Incremented on every data change
+const CACHE_TTL_MS = 1000; // 1 second fallback
+const _sseClients = new Set();
+
+function isSessionLog(filePath) {
+  const base = path.basename(filePath);
+  return base.endsWith('.jsonl') || base.includes('.jsonl.reset.');
+}
+
+function collectSessionFiles(rootDir) {
+  const files = [];
+
+  function walk(dir) {
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (e) {
+      return;
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isFile() && isSessionLog(fullPath)) {
+        files.push(fullPath);
+      }
+    }
+  }
+
+  walk(rootDir);
+  return files;
+}
 
 function parseToolCalls() {
   if (DEMO_MODE) {
@@ -99,17 +131,17 @@ function parseToolCalls() {
     return _cache;
   }
 
-  const files = fs.readdirSync(SESSIONS_DIR).filter(f => f.endsWith('.jsonl'));
+  const files = collectSessionFiles(SESSIONS_DIR);
   const toolCalls = [];
 
-  for (const file of files) {
-    const filePath = path.join(SESSIONS_DIR, file);
-    const sessionId = file.replace('.jsonl', '');
-    
+  for (const filePath of files) {
+    const relativePath = path.relative(SESSIONS_DIR, filePath);
+    const sessionId = relativePath.replace(/\.jsonl(?:\.reset\..+)?$/, '');
+
     try {
       const content = fs.readFileSync(filePath, 'utf8');
       const lines = content.split('\n').filter(l => l.trim());
-      
+
       for (const line of lines) {
         try {
           const obj = JSON.parse(line);
@@ -146,6 +178,34 @@ function parseToolCalls() {
   _cache = toolCalls.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   _cacheTime = now;
   return _cache;
+}
+
+// Broadcast SSE update to all connected clients
+function broadcastUpdate() {
+  const oldCount = _cache ? _cache.length : 0;
+  _cacheTime = 0; // Force cache invalidation
+  const calls = parseToolCalls();
+  const newCount = calls.length;
+  if (newCount !== oldCount) {
+    _version++;
+    const event = JSON.stringify({ version: _version, total: newCount, delta: newCount - oldCount });
+    for (const client of _sseClients) {
+      try { client.write(`data: ${event}\n\n`); } catch (e) { _sseClients.delete(client); }
+    }
+  }
+}
+
+// Watch sessions directory tree for changes
+let _watchDebounce = null;
+try {
+  fs.watch(SESSIONS_DIR, { persistent: false, recursive: true }, (eventType, filename) => {
+    if (!filename || !isSessionLog(filename)) return;
+    // Debounce rapid writes (OpenClaw writes multiple lines quickly)
+    if (_watchDebounce) clearTimeout(_watchDebounce);
+    _watchDebounce = setTimeout(broadcastUpdate, 150);
+  });
+} catch (e) {
+  console.error('fs.watch failed, falling back to cache-only mode:', e.message);
 }
 
 // Warm cache on startup in background so first request is fast
@@ -188,6 +248,20 @@ const server = http.createServer((req, res) => {
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(toolCalls));
+  } else if (req.url === '/api/events') {
+    // Server-Sent Events endpoint
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*'
+    });
+    // Send current state immediately
+    const calls = parseToolCalls();
+    res.write(`data: ${JSON.stringify({ version: _version, total: calls.length, delta: 0 })}\n\n`);
+    _sseClients.add(res);
+    req.on('close', () => _sseClients.delete(res));
+    return;
   } else if (req.url === '/api/stats') {
     const toolCalls = parseToolCalls();
     const stats = {};
